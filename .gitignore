@@ -7,3 +7,6 @@ tessdata/
 # Optional: logs and temporary files
 *.log
 *.tmp
+
+backend/db.sqlite
+backend/uploads/

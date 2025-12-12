@@ -10,4 +10,4 @@ tessdata/
 
 backend/db.sqlite
 backend/uploads/
-backend/tessdata/*.traineddata
+*.traineddata

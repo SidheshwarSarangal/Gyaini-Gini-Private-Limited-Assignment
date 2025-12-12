@@ -119,19 +119,27 @@ sudo apt install -y \
   git
 ```
 
-Clone the repository, install backend dependencies, download Tesseract languages, and start the backend server using the following commands:
+## Setup Backend
+
+Clone the repository, install the required backend dependencies, download Tesseract language files, and start the backend server with the following commands:
 
 ```bash
+# Clone the repository
 git clone https://github.com/SidheshwarSarangal/Gyaini-Gini-Private-Limited-Assignment.git
-cd Gyaini-Gini-Private-Limited-Assignment
-cd backend
+
+# Navigate into the project directory
+cd Gyaini-Gini-Private-Limited-Assignment/backend
+
+# Install backend dependencies
 npm install
+
+# Make the Tesseract language installation script executable
 chmod +x install-languages.sh
 ```
 
 - install-languages.sh contains the following text -
 
-```
+```json
 echo "📥 Downloading Tesseract languages..."
 mkdir -p ./tessdata
 curl -L https://github.com/tesseract-ocr/tessdata_best/archive/refs/heads/main.zip -o tessdata.zip
@@ -142,13 +150,13 @@ rm -rf tessdata.zip tessdata_best-main
 echo "✅ Language files installed successfully in ./tessdata/"
 ```
 
-- run the following command in order to run the server -
+- Run the following command in order to run the server -
 
 ```bash
 npm run dev
 ```
 
-- then you can run the application in the web browser with link
+- Then you can run the application in the web browser with link
   
 ```http://localhost:3000/index.html```
 

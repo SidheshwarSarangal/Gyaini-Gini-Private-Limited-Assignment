@@ -156,9 +156,6 @@ npm run dev
 
 # File Processing Pipeline
 
-## Overview
-
-This system enables users to upload image or document files, automatically process them with OCR using Tesseract.js, store the extracted text and metadata in a SQLite database, and view results on a dynamic frontend. Users can browse all saved records, inspect individual entries, and delete records along with their corresponding files.
 
 When files are uploaded via a FormData POST request, the frontend displays a loading indicator and clears previous results. The server saves the files, retrieves their storage paths, and runs an OCR pipeline. Images are preprocessed with Sharp—grayscaled, normalized, sharpened, and thresholded—to improve text recognition. Tesseract extracts the text and confidence score, which is then cleaned and saved in the database along with filename and file location.
 
@@ -199,4 +196,87 @@ The backend exposes endpoints for all core operations: POST /upload for uploads,
 
 ---
 
+# File Processing Fallback Decision Tree
+
+This document describes the flow of the file processing and OCR pipeline, including fallback paths and error handling.
+
+---
+
+## Workflow
+
+### 1. User Upload
+
+- **Start:** User clicks the **Upload** button.
+- **Check if files are selected**
+  - **Yes:** Continue
+  - **No:** Alert `"Please select files first"` → **End**
+
+### 2. File Upload
+
+- Show loading spinner
+- Clear previous results
+- Upload files to `/upload` endpoint
+  - **Success:** Receive `uploadData.files`
+  - **Fail:** Show `"Error while uploading or processing files"` → **End**
+
+### 3. Process Each Uploaded File
+
+For each file `f`:
+
+#### 3.1 Fetch File Destination
+
+- GET `/file?filename=f.filename`
+  - **Success:** Receive `{ destination, filename }`
+  - **Fail:** Log `"Error processing file: f.filename"` → Skip this file
+
+#### 3.2 Validate Destination
+
+- Check if `destination` and `filename` exist
+  - **Yes:** Continue
+  - **No:** Skip file → Log `"File not found"`
+
+#### 3.3 Run OCR Pipeline
+
+- POST `/pipeline` with `{ filePath, destination, filename }`
+  - **Success:** Receive `{ text, confidence, model, message }`
+  - **Fail:** Log `"OCR failed for file: f.filename"` → Show fallback `"N/A"` in frontend
+
+#### 3.4 Process OCR Response
+
+- **Text exists:** Save to DB using `saveResultToDB`
+- **Text empty:** Skip saving → Optional log
+
+#### 3.5 Render Result in Frontend
+
+- Display:
+  - Filename
+  - Image
+  - Model
+  - Confidence
+  - Text
+- If `ocrData.message` exists → Show message in **red**
+
+---
+
+### 4. Final Steps
+
+- After all files processed:
+  - Hide loading spinner
+  - Display all results (or errors for files that failed)
+
+---
+
+## Fallback / Error Handling Summary
+
+| Scenario | Action |
+|----------|--------|
+| No files selected | Alert user → Stop |
+| File upload fails | Display error → Stop |
+| Destination not found in DB | Skip file → Log error |
+| OCR fails / throws exception | Skip saving → Show `"N/A"` text or error message |
+| Empty OCR result | Do not save to DB → Continue to next file |
+
+---
+
+This decision tree captures all conditional branches and fallback paths in the file processing and OCR pipeline.
 

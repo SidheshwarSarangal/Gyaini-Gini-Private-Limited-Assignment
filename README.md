@@ -154,6 +154,21 @@ npm run dev
 
 ---
 
+# File Processing Pipeline
+
+## Overview
+
+This system enables users to upload image or document files, automatically process them with OCR using Tesseract.js, store the extracted text and metadata in a SQLite database, and view results on a dynamic frontend. Users can browse all saved records, inspect individual entries, and delete records along with their corresponding files.
+
+When files are uploaded via a FormData POST request, the frontend displays a loading indicator and clears previous results. The server saves the files, retrieves their storage paths, and runs an OCR pipeline. Images are preprocessed with Sharp—grayscaled, normalized, sharpened, and thresholded—to improve text recognition. Tesseract extracts the text and confidence score, which is then cleaned and saved in the database along with filename and file location.
+
+The frontend dynamically displays each file’s thumbnail, OCR model, confidence score, extracted text, and any errors. A dedicated records page allows users to fetch, view, and manage all previous results. Individual records can also be accessed or deleted, which removes both the database entry and the file.
+
+The backend exposes endpoints for all core operations: POST /upload for uploads, GET /file for file info, POST /pipeline for OCR processing, and CRUD operations on records via /records. By integrating upload, processing, OCR, storage, and display, the system provides a seamless, real-time file-to-text experience using Tesseract.js, Sharp, SQLite, and vanilla JavaScript.
+
+
+---
+
 ## How It Works
 
 1. **Server Setup**

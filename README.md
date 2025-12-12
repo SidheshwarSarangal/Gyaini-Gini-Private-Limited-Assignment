@@ -139,18 +139,18 @@ chmod +x install-languages.sh
 
 - install-languages.sh contains the following text -
 
-```json
-echo "📥 Downloading Tesseract languages..."
+```
+echo "Downloading Tesseract languages..."
 mkdir -p ./tessdata
 curl -L https://github.com/tesseract-ocr/tessdata_best/archive/refs/heads/main.zip -o tessdata.zip
-echo "📦 Extracting..."
+echo "Extracting..."
 unzip -q tessdata.zip
 mv tessdata_best-main/* ./tessdata/
 rm -rf tessdata.zip tessdata_best-main
-echo "✅ Language files installed successfully in ./tessdata/"
+echo "Language files installed successfully in ./tessdata/"
 ```
 
-- Run the following command in order to run the server -
+- Run the following command in the backend folder, in order to run the server -
 
 ```bash
 npm run dev

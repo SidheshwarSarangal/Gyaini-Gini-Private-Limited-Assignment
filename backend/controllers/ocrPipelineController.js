@@ -1,146 +1,68 @@
 const db = require("../db/database");
 const tesseract = require("./tesseractController");
-const yolo = require("./yoloController");
 const sharp = require("sharp");
-const path = require("path");
-const fs = require("fs");
 
-// --- Clean OCR output ---
+// Clean OCR output
 function cleanText(text) {
   if (!text) return "";
-  let cleaned = text.replace(/\n+/g, " ");           // remove newlines
-  cleaned = cleaned.replace(/\s+/g, " ").trim();    // remove extra spaces
-  cleaned = cleaned.replace(/[^\w\s,.]/g, "");      // remove special characters
-  return cleaned;
+  return text.replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-// --- Save result to DB ---
-const saveResultToDB = (destination, filename, modelName, text, confidence) => {
+// Save result to DB
+function saveResultToDB(destination, filename, text, confidence) {
   if (!text.trim()) return;
   db.get(
-    `SELECT * FROM records WHERE destination=? AND filename=? AND model=? AND ocr_text=? AND confidence=?`,
-    [destination, filename, modelName, text, confidence],
+    `SELECT * FROM records WHERE destination=? AND filename=? AND ocr_text=? AND confidence=?`,
+    [destination, filename, text, confidence],
     (err, row) => {
-      if (err) return console.error(`${modelName} DB select error:`, err.message);
+      if (err) return console.error("DB select error:", err.message);
       if (!row) {
         db.run(
-          `INSERT INTO records (destination, filename, model, ocr_text, confidence) VALUES (?,?,?,?,?)`,
-          [destination, filename, modelName, text, confidence],
-          (err2) =>
-            err2
-              ? console.error(`${modelName} DB insert error:`, err2.message)
-              : console.log(`${modelName} inserted successfully`)
+          `INSERT INTO records (destination, filename, ocr_text, confidence) VALUES (?,?,?,?)`,
+          [destination, filename, text, confidence],
+          (err2) => err2
+            ? console.error("DB insert error:", err2.message)
+            : console.log("OCR result saved")
         );
-      } else {
-        console.log(`${modelName} record already exists → skipping insert`);
       }
     }
   );
-};
+}
 
-// --- Try OCR model ---
-const tryModel = async (modelName, ocrFunc, imagePath) => {
+// OCR processing
+async function tryOCR(imagePath) {
   try {
-    // Preprocess image for better OCR
-    const preprocessedBuffer = await sharp(imagePath)
+    const preprocessed = await sharp(imagePath)
       .grayscale()
       .normalise()
       .sharpen()
       .threshold(150)
       .toBuffer();
 
-    const result = await ocrFunc(preprocessedBuffer);
-    const text = result.text || "";
-    const confidence = result.confidence || 0;
-    if (text.trim()) {
-      saveResultToDB(result.destination || "", result.filename || "", modelName, text, confidence);
-      return { destination: result.destination || "", filename: result.filename || "", model: modelName, text, confidence };
-    }
+    const result = await tesseract.recognize(preprocessed);
+    return { text: cleanText(result.text), confidence: result.confidence };
   } catch (err) {
-    console.log(`${modelName} failed:`, err.message);
+    console.error("OCR failed:", err.message);
+    return { text: "", confidence: 0 };
   }
-  return null;
-};
+}
 
-// --- Main pipeline ---
+// Main pipeline endpoint
 exports.runPipeline = async (req, res) => {
   const { filePath, destination, filename } = req.body;
   if (!filePath) return res.status(400).json({ message: "filePath is required" });
 
-  let result = null;
-  try {
-    const boxes = await yolo.detectObjects(filePath);
+  const ocrResult = await tryOCR(filePath);
 
-    if (boxes.length > 0) {
-      console.log(`YOLO detected ${boxes.length} object(s)`);
-
-      // Use first box for OCR
-      const box = boxes[0];
-      const croppedPath = path.join(
-        path.dirname(filePath),
-        `${path.basename(filePath, path.extname(filePath))}_crop.png`
-      );
-
-      await sharp(filePath)
-        .extract({
-          left: Math.floor(box.x),
-          top: Math.floor(box.y),
-          width: Math.floor(box.w),
-          height: Math.floor(box.h),
-        })
-        .toFile(croppedPath);
-
-      result = await tryModel("Tesseract+YOLO", tesseract.run, croppedPath);
-
-    } else {
-      console.log("YOLO did not detect any objects, splitting image into grid for OCR");
-
-      const meta = await sharp(filePath).metadata();
-      const rows = 3;
-      const cols = 3;
-      const cellWidth = Math.floor(meta.width / cols);
-      const cellHeight = Math.floor(meta.height / rows);
-
-      let combinedText = "";
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const cropPath = path.join(
-            path.dirname(filePath),
-            `${path.basename(filePath, path.extname(filePath))}_grid_${r}_${c}.png`
-          );
-
-          await sharp(filePath)
-            .extract({
-              left: c * cellWidth,
-              top: r * cellHeight,
-              width: cellWidth,
-              height: cellHeight,
-            })
-            .toFile(cropPath);
-
-          const partial = await tryModel("Tesseract", tesseract.run, cropPath);
-          if (partial && partial.text) combinedText += cleanText(partial.text) + " ";
-        }
-      }
-
-      combinedText = combinedText.trim();
-
-      if (combinedText) {
-        result = { destination, filename, model: "Tesseract-grid", text: combinedText, confidence: 0 };
-      } else {
-        result = await tryModel("Tesseract", tesseract.run, filePath);
-      }
-    }
-
-  } catch (err) {
-    console.log("YOLO failed:", err.message);
-    result = await tryModel("Tesseract", tesseract.run, filePath);
+  if (ocrResult.text) {
+    saveResultToDB(destination || "", filename || "", ocrResult.text, ocrResult.confidence);
   }
 
-  if (!result) {
-    result = { destination, filename, model: "None", text: "", confidence: 0, message: "All OCR models failed" };
-  }
-
-  res.json(result);
+  res.json({
+    destination,
+    filename,
+    model: "Tesseract",
+    text: ocrResult.text,
+    confidence: ocrResult.confidence
+  });
 };

@@ -43,14 +43,14 @@ This project is a **web application** designed to digitize old documents, includ
 Main repository contains two folders as frontend and backend
 
 - The frontend contains the basic html/css based frontend along with the javascrpt files for running the functions
-```
+``
 frontend/
 ├─ styles.css
 ├─ index.html
 ├─ records.html
 ├─ app.js
 └─ records.js
-```
+``
 - The backend contains the server for running the application. It contains the database, routes and controllers.
 
 backend/

@@ -38,6 +38,10 @@ This project is a **web application** designed to digitize old documents, includ
 
 ---
 
+## Short Demo Working Video
+Link:***https://drive.google.com/file/d/1d3V6i9l8lytZGa2EjrZHt8RXWut_qRfi/view?usp=sharing***
+---
+
 ## Folder Structure
 
 Main repository contains two folders as frontend and backend

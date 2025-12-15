@@ -140,7 +140,7 @@ cd Gyaini-Gini-Private-Limited-Assignment/backend
 npm install
 
 # Make the Tesseract language installation script executable
-chmod +x install-languages.sh
+bash install-languages.sh
 ```
 
 - install-languages.sh contains the following text -
